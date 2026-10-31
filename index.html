@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>京东自营二手 iPad Pro M5 11英寸 256G · 实时看板</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#f6f7fb; color:#1a1a1a; font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; }
+  .wrap { max-width:1080px; margin:0 auto; padding:24px 20px 60px; }
+  header h1 { font-size:22px; margin:0 0 6px; }
+  header .meta { color:#8a8f99; font-size:13px; }
+  .stats { display:flex; gap:12px; flex-wrap:wrap; margin:16px 0; }
+  .stat { background:#fff; border-radius:10px; padding:14px 18px; min-width:120px; box-shadow:0 1px 3px rgba(0,0,0,.05); }
+  .stat .num { font-size:26px; font-weight:700; }
+  .stat .lbl { color:#8a8f99; font-size:12px; margin-top:2px; }
+  .card { background:#fff; border-radius:12px; padding:16px 18px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,.05); display:flex; gap:16px; align-items:flex-start; }
+  .card .left { flex:1; min-width:0; }
+  .title { font-size:15px; font-weight:600; line-height:1.45; }
+  .title a { color:inherit; text-decoration:none; }
+  .title a:hover { color:#e1251b; }
+  .tags { margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; }
+  .tag { font-size:12px; padding:2px 8px; border-radius:6px; background:#f2f3f6; color:#555; }
+  .tag.cond { background:#fff4e6; color:#b26a00; }
+  .tag.stock-ok { background:#e6f7ee; color:#0a7a36; }
+  .tag.stock-out { background:#fdecea; color:#c62828; }
+  .right { text-align:right; flex-shrink:0; }
+  .price { font-size:24px; font-weight:700; color:#e1251b; }
+  .price .curr { font-size:14px; }
+  .sku { color:#a0a5ae; font-size:11px; margin-top:4px; }
+  .insp-wrap { margin-top:10px; border-top:1px dashed #e8e9ee; padding-top:8px; }
+  .insp-head { font-size:12px; color:#8a8f99; margin-bottom:6px; }
+  .insp-pills { display:flex; gap:6px; flex-wrap:wrap; }
+  .insp-pill { font-size:12px; padding:3px 8px; border-radius:6px; background:#f6f7fb; border:1px solid #e8e9ee; color:#333; font-variant-numeric:tabular-nums; }
+  .insp-pill .p { color:#e1251b; font-weight:600; }
+  .insp-min { display:inline-block; font-weight:700; color:#0a7a36; }
+  footer { color:#a0a5ae; font-size:12px; text-align:center; margin-top:24px; }
+  .stale { color:#c62828; font-weight:600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>京东自营二手 iPad Pro M5 11英寸 256G</h1>
+    <div class="meta" id="meta">加载中…</div>
+  </header>
+  <div class="stats" id="stats"></div>
+  <div id="list"></div>
+  <footer>数据由 GitHub Actions 每小时自动抓取；价格/库存以京东页面为准。</footer>
+</div>
+<script>
+function esc(s){ return String(s).replace(/[&<>"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function lowestPrice(it){
+  var ps = (it.inspects||[]).map(function(x){return x.price;}).filter(function(x){return x!=null;});
+  if(ps.length) return Math.min.apply(null, ps);
+  return it.price != null ? it.price : it.jdPrice;
+}
+fetch('data.json', {cache:'no-store'}).then(function(r){return r.json();}).then(function(SNAPSHOT){
+  var items = SNAPSHOT.items || [];
+  var ft = SNAPSHOT.fetchedAt || '—';
+  // 判断数据是否过期（超过 2 小时标红提示）
+  var stale = false;
+  if(ft!=='—'){
+    var t = new Date(ft.replace(' ','T'));
+    stale = (Date.now() - t.getTime()) > 2*3600*1000;
+  }
+  document.getElementById('meta').innerHTML =
+    '抓取时间：' + ft + ' · 商品 ' + items.length + ' 条' +
+    (stale ? ' · <span class="stale">数据可能过期（cookie失效？）</span>' : '');
+
+  var minP=null,maxP=null,sum=0,n=0,inspTotal=0;
+  items.forEach(function(it){
+    var p = lowestPrice(it);
+    if(p!=null){ sum+=p; n++; if(minP==null||p<minP)minP=p; if(maxP==null||p>maxP)maxP=p; }
+    inspTotal += (it.selectableCount||0);
+  });
+  var avg = n? (sum/n).toFixed(0):'—';
+  document.getElementById('stats').innerHTML =
+    '<div class="stat"><div class="num">'+items.length+'</div><div class="lbl">在售商品</div></div>' +
+    '<div class="stat"><div class="num">'+inspTotal+'</div><div class="lbl">验机实例</div></div>' +
+    '<div class="stat"><div class="num">¥'+(minP!=null?minP:'—')+'</div><div class="lbl">最低可购价</div></div>' +
+    '<div class="stat"><div class="num">¥'+avg+'</div><div class="lbl">平均价</div></div>' +
+    '<div class="stat"><div class="num">¥'+(maxP!=null?maxP:'—')+'</div><div class="lbl">最高价</div></div>';
+
+  document.getElementById('list').innerHTML = items.map(function(it){
+    var price = lowestPrice(it);
+    var cond = (it.condition||[]).map(function(c){return '<span class="tag cond">'+esc(c)+'</span>';}).join('');
+    var stock = it.stockText ? '<span class="tag '+(it.stockText==='无货'?'stock-out':'stock-ok')+'">'+esc(it.stockText)+'</span>' : '';
+    var inspHtml = '';
+    var inspects = (it.inspects&&it.inspects.length)?it.inspects:[];
+    if(inspects.length){
+      var ps = inspects.map(function(x){return x.price;}).sort(function(a,b){return a-b;});
+      var pills = ps.map(function(p){return '<span class="insp-pill">¥<span class="p">'+p.toFixed(0)+'</span></span>';}).join('');
+      inspHtml = '<div class="insp-wrap"><div class="insp-head">可选验机 '+inspects.length+' 台 · 最低 <span class="insp-min">¥'+ps[0].toFixed(0)+'</span> / 最高 ¥'+ps[ps.length-1].toFixed(0)+'</div><div class="insp-pills">'+pills+'</div></div>';
+    }
+    return '<div class="card"><div class="left">' +
+      '<div class="title"><a href="'+esc(it.link)+'" target="_blank" rel="noopener">'+esc(it.title)+'</a></div>' +
+      '<div class="tags">'+cond+stock+'</div>' +
+      '<div class="sku">SKU '+esc(it.sku)+'</div>' + inspHtml +
+      '</div><div class="right"><div class="price"><span class="curr">¥</span>'+(price!=null?price.toFixed(2):'—')+'</div></div></div>';
+  }).join('');
+}).catch(function(e){
+  document.getElementById('list').innerHTML = '<div style="color:#c62828;padding:40px 0;text-align:center">数据加载失败：'+esc(e)+'</div>';
+});
+</script>
+</body>
+</html>
